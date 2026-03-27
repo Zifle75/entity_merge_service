@@ -22,6 +22,19 @@ Sometimes two Company records are duplicates. We need an HTTP API to merge them 
 ## API
 - POST /v1/company-merges
 
+## Quick Demo Script
+Run this to seed two duplicate companies, send a merge request, and verify the result:
+
+```powershell
+python scripts/demo_merge.py
+```
+
+Expected output includes:
+- HTTP 200
+- merged_company_id in response
+- users/branches reassigned to merged company
+- source companies soft-deleted
+
 ## Maintainability
 - Keep API models separate from database models.
 - Keep merge rules in the service layer and SQLite logic in the repository layer.
