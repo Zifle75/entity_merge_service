@@ -46,16 +46,71 @@ class SqliteRepository:
 
     # Method to insert a company into the database.
     async def insert_company(self, company: Company) -> None:
-        raise NotImplementedError("TODO: insert company into SQLite")
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO companies (
+                    id,
+                    name,
+                    address_line_1,
+                    address_line_2,
+                    state,
+                    city,
+                    postal_code,
+                    credit_limit,
+                    is_deleted
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    company.id,
+                    company.name,
+                    company.address.line_1,
+                    company.address.line_2,
+                    company.address.state,
+                    company.address.city,
+                    company.address.postal_code,
+                    company.credit_limit,
+                    1 if company.is_deleted else 0,
+                ),
+            )
+
+    async def active_company_exists(self, company_id: str) -> bool:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT 1 FROM companies WHERE id = ? AND is_deleted = 0 LIMIT 1",
+                (company_id,),
+            ).fetchone()
+            return row is not None
 
     # Method to reassign users from deprecated companies to target company
     async def reassign_users(self, source_company_ids: list[str], target_company_id: str) -> None:
-        raise NotImplementedError("TODO: bulk update users.company_id to target_company_id")
+        if not source_company_ids:
+            return
+
+        placeholders = ",".join(["?"] * len(source_company_ids))
+        query = f"UPDATE users SET company_id = ? WHERE company_id IN ({placeholders})"
+
+        with self._connect() as conn:
+            conn.execute(query, [target_company_id, *source_company_ids])
 
     # Method to reassign branches from deprecated companies to target company
     async def reassign_branches(self, source_company_ids: list[str], target_company_id: str) -> None:
-        raise NotImplementedError("TODO: bulk update branches.company_id to target_company_id")
+        if not source_company_ids:
+            return
+
+        placeholders = ",".join(["?"] * len(source_company_ids))
+        query = f"UPDATE branches SET company_id = ? WHERE company_id IN ({placeholders})"
+
+        with self._connect() as conn:
+            conn.execute(query, [target_company_id, *source_company_ids])
 
     # Method to mark source companies as deleted in the database
     async def soft_delete_companies(self, source_company_ids: list[str]) -> None:
-        raise NotImplementedError("TODO: mark source companies as deleted")
+        if not source_company_ids:
+            return
+
+        placeholders = ",".join(["?"] * len(source_company_ids))
+        query = f"UPDATE companies SET is_deleted = 1 WHERE id IN ({placeholders})"
+
+        with self._connect() as conn:
+            conn.execute(query, source_company_ids)
